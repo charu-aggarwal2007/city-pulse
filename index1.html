@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityPulse - Municipal Data Fusion & Response Platform</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+
+  <!-- Leaflet CSS & JS (Interactive Map Engine) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-[#090d16] text-slate-100 antialiased min-h-screen flex flex-col font-sans selection:bg-cyan-500/30">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-4 md:px-6 py-3 sticky top-0 z-50 shadow-2xl">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Enterprise Brand & Version -->
+      <div class="flex items-center gap-3">
+        <div class="relative flex items-center justify-center w-11 h-11 rounded-xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 text-2xl shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+          <span class="animate-heartbeat">🫀</span>
+          <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-900"></span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-xl tracking-tight text-white flex items-center gap-2">
+              CityPulse <span class="text-xs font-mono font-normal text-cyan-400">Enterprise v2.4</span>
+            </h1>
+            <span class="text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 tracking-wider">
+              Jaipur Municipal Operations
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Real-Time Data Fusion, Telemetry Analytics & Incident Response</p>
+        </div>
+      </div>
+
+      <!-- Action Controls -->
+      <div class="flex flex-wrap items-center gap-3">
+        
+        <!-- Active Map Engine Indicator -->
+        <div class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-cyan-400 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span id="map-engine-label" class="font-bold">Jaipur Smart City Engine</span>
+        </div>
+
+        <!-- Audio Dispatch Announcer Toggle -->
+        <button onclick="toggleAudioBroadcaster()" id="audio-btn" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-medium text-xs transition flex items-center gap-1.5" title="Toggle Emergency Dispatch Audio Announcer">
+          <span id="audio-icon">🔇</span> <span id="audio-label">Voice Off</span>
+        </button>
+
+        <!-- Live Status Pill -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800">
+          <div id="live-indicator-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 pulse-glow"></div>
+          <span id="live-status-text" class="text-xs font-mono text-emerald-400 font-semibold uppercase">Telemetry Active</span>
+        </div>
+
+        <!-- Stream Speed -->
+        <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 p-1 rounded-lg">
+          <button onclick="setSimSpeed(0.5)" id="speed-05" class="px-2 py-0.5 text-xs rounded hover:bg-slate-800 font-mono text-slate-400">0.5x</button>
+          <button onclick="setSimSpeed(1)" id="speed-1" class="px-2 py-0.5 text-xs rounded bg-cyan-500/20 text-cyan-400 font-bold font-mono">1x</button>
+          <button onclick="setSimSpeed(2)" id="speed-2" class="px-2 py-0.5 text-xs rounded hover:bg-slate-800 font-mono text-slate-400">2x</button>
+          <button onclick="setSimSpeed(5)" id="speed-5" class="px-2 py-0.5 text-xs rounded hover:bg-slate-800 font-mono text-slate-400">5x</button>
+        </div>
+
+        <!-- Play/Pause Button -->
+        <button onclick="toggleSimulation()" id="sim-toggle-btn" class="px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20">
+          <span id="sim-btn-icon">⏸️</span> <span id="sim-btn-text">Pause</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
+
+    <!-- TOP SECTION: Executive Command Center & Radial Health Dial -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Radial Health Score Dial -->
+      <div class="lg:col-span-4 glass-card rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden scanline-effect">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-mono text-slate-400 uppercase tracking-widest">Neighborhood Health Index</span>
+          <span id="pulse-zone-badge" class="text-xs font-extrabold px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 glow-amber">
+            🟡 Moderate Stress
+          </span>
+        </div>
+
+        <!-- Radial Gauge -->
+        <div class="flex items-center justify-around my-4">
+          <div class="relative flex items-center justify-center w-36 h-36">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" stroke="rgba(255, 255, 255, 0.08)" stroke-width="8" fill="transparent"/>
+              <circle id="gauge-circle" cx="50" cy="50" r="42" stroke="#f59e0b" stroke-width="8" stroke-dasharray="263.89" stroke-dashoffset="84" stroke-linecap="round" fill="transparent" class="transition-all duration-700 ease-out"/>
+            </svg>
+            <div class="absolute text-center">
+              <span id="pulse-score-val" class="text-4xl font-black text-amber-400 font-mono tracking-tight">68</span>
+              <span class="block text-[10px] text-slate-400 font-mono font-bold uppercase mt-0.5">Health Index</span>
+            </div>
+          </div>
+
+          <!-- Sub-domain Breakdown Gauges -->
+          <div class="space-y-2 text-xs font-mono w-44">
+            <div>
+              <div class="flex justify-between text-slate-400 text-[11px] mb-0.5"><span>Transit GTFS:</span><span id="score-transit" class="text-emerald-400 font-bold">85%</span></div>
+              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div id="bar-transit" class="bg-emerald-500 h-full transition-all duration-500" style="width: 85%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-slate-400 text-[11px] mb-0.5"><span>Power Grid:</span><span id="score-grid" class="text-amber-400 font-bold">62%</span></div>
+              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div id="bar-grid" class="bg-amber-500 h-full transition-all duration-500" style="width: 62%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-slate-400 text-[11px] mb-0.5"><span>Weather Alert:</span><span id="score-weather" class="text-red-400 font-bold">45%</span></div>
+              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div id="bar-weather" class="bg-red-500 h-full transition-all duration-500" style="width: 45%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-slate-400 text-[11px] mb-0.5"><span>311 Incident Density:</span><span id="score-311" class="text-amber-400 font-bold">60%</span></div>
+              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div id="bar-311" class="bg-amber-500 h-full transition-all duration-500" style="width: 60%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-[11px] text-slate-400 pt-3 border-t border-slate-800 flex justify-between items-center font-mono">
+          <span>Telemetry Window: <strong class="text-slate-200">15m Rolling</strong></span>
+          <span id="active-correlations-count" class="text-cyan-400 font-bold">2 Active Correlations</span>
+        </div>
+      </div>
+
+      <!-- Plain-Language Operational Brief -->
+      <div class="lg:col-span-8 glass-card rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 text-sm">⚡</span>
+              <span class="text-xs font-mono uppercase tracking-widest text-cyan-400 font-bold">Operational Situation Brief</span>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                Unified Telemetry Engine
+              </span>
+              <button onclick="speakCurrentSummary()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-mono font-bold border border-slate-700 transition flex items-center gap-1">
+                🔊 Read Aloud
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Brief Box -->
+          <div id="ai-summary-text" class="p-4.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm md:text-base text-slate-200 leading-relaxed font-medium min-h-[95px] flex items-center shadow-inner">
+            Loading live operational telemetry stream...
+          </div>
+        </div>
+
+        <!-- Action Mitigation Playbook -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-slate-800/80">
+          <div class="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+            <div class="text-[11px] font-mono text-cyan-400 font-bold uppercase">Mitigation Action #1</div>
+            <div id="rec-action-1" class="text-xs text-slate-200 font-medium mt-1">Dispatch Municipal Drain Crew to Malviya Nagar Underpass</div>
+          </div>
+          <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+            <div class="text-[11px] font-mono text-amber-400 font-bold uppercase">Mitigation Action #2</div>
+            <div id="rec-action-2" class="text-xs text-slate-200 font-medium mt-1">Reroute RSRTC Bus Route via Vaishali Nagar</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MIDDLE SECTION: Interactive Map Engine with City Switcher & Layer Selector -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Interactive Geospatial Map Component -->
+      <div class="lg:col-span-7 glass-card rounded-2xl p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="font-bold text-base text-white flex items-center gap-2">
+              <span>🗺️</span> Interactive Jaipur Map & District Markers
+            </h3>
+            <p class="text-xs text-slate-400">Select any metro area worldwide or layer style below.</p>
+          </div>
+
+          <!-- Global City Selector & Map Style Layer Controls -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- Global City Selector -->
+            <select id="global-city-select" onchange="changeCity(this.value)" class="px-2.5 py-1 text-xs rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold font-mono focus:outline-none cursor-pointer">
+              <option value="jaipur" selected>🏰 Jaipur (Pink City, Rajasthan)</option>
+              <option value="delhi">🇮🇳 New Delhi (NCR)</option>
+              <option value="mumbai">🇮🇳 Mumbai (Maharashtra)</option>
+              <option value="new_york">🏙️ New York City (NYC)</option>
+              <option value="san_francisco">🌉 San Francisco (SF)</option>
+              <option value="london">🇬🇧 London (UK)</option>
+              <option value="tokyo">🗾 Tokyo (Japan)</option>
+              <option value="singapore">🦁 Singapore (SG)</option>
+              <option value="sydney">🇦🇺 Sydney (Australia)</option>
+            </select>
+
+            <!-- Layer Style selector -->
+            <select id="map-style-select" onchange="changeMapStyle(this.value)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-950 border border-slate-800 text-slate-300 font-mono focus:outline-none cursor-pointer">
+              <option value="google_dark">🗺️ Dark City Vector</option>
+              <option value="google_road">🗺️ Google Road</option>
+              <option value="google_sat">🛰️ Google Satellite</option>
+              <option value="google_terrain">⛰️ Google Terrain</option>
+            </select>
+
+            <!-- Scenario Selectors -->
+            <div class="flex items-center gap-1">
+              <button onclick="triggerScenario('normal')" id="preset-normal" class="px-2 py-1 text-xs rounded border border-slate-700 hover:bg-slate-800 text-slate-400 font-mono transition">Normal</button>
+              <button onclick="triggerScenario('storm')" id="preset-storm" class="px-2 py-1 text-xs rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold font-mono transition">Storm</button>
+              <button onclick="triggerScenario('grid')" id="preset-grid" class="px-2 py-1 text-xs rounded bg-red-500/20 border border-red-500/40 text-red-300 font-bold font-mono transition">Outage</button>
+              <button onclick="triggerScenario('heatwave')" id="preset-heatwave" class="px-2 py-1 text-xs rounded bg-purple-500/20 border border-purple-500/40 text-purple-300 font-bold font-mono transition">AQI</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Interactive Map Container -->
+        <div id="map" class="w-full h-80 rounded-xl overflow-hidden border border-slate-800 shadow-inner z-10"></div>
+      </div>
+
+      <!-- Sector Telemetry & Correlation Visualizer -->
+      <div class="lg:col-span-5 glass-card rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div>
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h4 id="inspector-title" class="font-bold text-base text-white">Malviya Nagar Telemetry</h4>
+            <span id="inspector-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 font-bold border border-red-500/30">🔴 High Alert</span>
+          </div>
+
+          <div class="mt-4 space-y-2.5 font-mono text-xs">
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex justify-between items-center">
+              <span class="text-slate-400 flex items-center gap-1.5"><span>🌦️</span> Weather:</span>
+              <span id="tel-weather" class="text-red-400 font-bold">Heavy Rain (42mm/h)</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex justify-between items-center">
+              <span class="text-slate-400 flex items-center gap-1.5"><span>⚡</span> Power Grid:</span>
+              <span id="tel-power" class="text-amber-400 font-bold">3 Outages (Substation #4)</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex justify-between items-center">
+              <span class="text-slate-400 flex items-center gap-1.5"><span>🚌</span> GTFS Transit:</span>
+              <span id="tel-transit" class="text-amber-400 font-bold">Route 14 (+22m delay)</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex justify-between items-center">
+              <span class="text-slate-400 flex items-center gap-1.5"><span>📞</span> 311 Incident Log:</span>
+              <span id="tel-311" class="text-red-400 font-bold">18 Flooding Calls</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800">
+          <div class="flex justify-between items-center mb-1 text-[11px] font-mono">
+            <span class="text-slate-400">Multi-Domain Correlation Match:</span>
+            <span id="correlation-confidence-badge" class="text-cyan-400 font-bold">Confidence: 91%</span>
+          </div>
+          <div id="inspector-correlation-box" class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-200">
+            <strong>Correlation #C-104:</strong> Storm surge triggered localized transformer trip & flooded underpass.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ANALYTICS ROW: Real-Time Charts & Correlation Rules -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Chart 1: Time-Series Stress Index -->
+      <div class="lg:col-span-7 glass-card rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-base text-white">Real-Time Civic Stress Time-Series</h3>
+            <p class="text-xs text-slate-400">Rolling 15-minute window monitoring citywide score vs. critical zones</p>
+          </div>
+          <span class="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/30">Live Telemetry</span>
+        </div>
+
+        <div class="h-60 w-full">
+          <canvas id="healthChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Active Correlation Rules Engine -->
+      <div class="lg:col-span-5 glass-card rounded-2xl p-5 flex flex-col justify-between space-y-3">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-base text-white">Cross-Domain Correlation Rules</h3>
+            <span class="text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Rules Engine Active</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-3">Matching multi-feed pattern clusters</p>
+
+          <div id="correlation-list" class="space-y-2 max-h-52 overflow-y-auto pr-1">
+            <!-- Dynamic correlation items -->
+          </div>
+        </div>
+
+        <button onclick="exportReport()" class="w-full py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs text-slate-200 font-mono font-bold transition flex items-center justify-center gap-2 shadow-md">
+          📥 Export Incident Telemetry Log (JSON)
+        </button>
+      </div>
+    </div>
+
+    <!-- INGESTED LIVE DATA STREAM TABLE -->
+    <div class="glass-card rounded-2xl p-5 space-y-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h3 class="font-bold text-base text-white">Normalized Telemetry Data Stream</h3>
+          <p class="text-xs text-slate-400">Standardized timestamps & geohashes across Weather, GTFS, Power, and 311 streams</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <input type="text" id="stream-search" oninput="filterStream()" placeholder="Filter payload or district..." class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono w-52">
+          <button onclick="clearStreamLog()" class="px-3 py-1.5 text-xs rounded-xl border border-slate-800 hover:bg-slate-800 text-slate-400 font-mono">Clear Log</button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs font-mono">
+          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 font-bold uppercase tracking-wider">
+            <tr>
+              <th class="p-3.5">Normalized Timestamp</th>
+              <th class="p-3.5">Source Stream</th>
+              <th class="p-3.5">District</th>
+              <th class="p-3.5">Normalized Payload</th>
+              <th class="p-3.5">Stress Delta</th>
+              <th class="p-3.5">Anomaly Tag</th>
+            </tr>
+          </thead>
+          <tbody id="stream-table-body" class="divide-y divide-slate-800/60">
+            <!-- Dynamic stream rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HISTORICAL REPLAY & GUARDRAILS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Historical Replay Timeline Slider -->
+      <div class="glass-card rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base text-white">Historical Replay Simulator</h3>
+          <span id="replay-time-display" class="text-xs font-mono text-cyan-400 font-bold">T - 00:00 (Live Stream)</span>
+        </div>
+        <p class="text-xs text-slate-400">Scrub backward through multi-day historical telemetry to re-evaluate correlation triggers.</p>
+
+        <div class="space-y-2 pt-2">
+          <input type="range" id="replay-slider" min="-120" max="0" value="0" step="5" class="w-full accent-cyan-500 cursor-pointer" oninput="scrubReplay(this.value)">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400">
+            <span>-2 Hours Ago</span>
+            <span>-1 Hour Ago</span>
+            <span>Live Stream</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Threshold Guardrails -->
+      <div class="glass-card rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base text-white">Automated Safety Guardrails</h3>
+          <span class="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">Guardrails Active</span>
+        </div>
+        <p class="text-xs text-slate-400">Automated dispatch triggers when sector health index drops below safety thresholds.</p>
+
+        <div class="grid grid-cols-2 gap-3 text-xs font-mono pt-1">
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <span class="text-slate-400">Health Index Threshold:</span>
+            <div class="font-bold text-red-400 mt-0.5">&lt; 50 (Critical Dispatch)</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <span class="text-slate-400">Incident Density Trigger:</span>
+            <div class="font-bold text-amber-400 mt-0.5">&gt; 15 Reports / 10m</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-800 bg-slate-900/80 px-6 py-4 mt-8 text-center text-xs text-slate-400 font-mono">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+      <div>
+        <strong>CityPulse Enterprise</strong> • Jaipur Municipal Operations Platform
+      </div>
+      <div>
+        Data Schema: <code class="bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-cyan-400">CityPulseDataModel_v2.4</code>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Core JavaScript Application -->
+  <script src="app.js"></script>
+</body>
+</html>
